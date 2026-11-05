@@ -35,7 +35,7 @@ function syncPublicTrip() {
     const props = PropertiesService.getScriptProperties();
     const repo = (props.getProperty('GITHUB_REPO') || '').trim();
     const token = (props.getProperty('GITHUB_TOKEN') || '').trim();
-    if (!/^[\\w.-]+\\/[\\w.-]+$/.test(repo)) throw Error('GITHUB_REPO 설정 필요');
+    if (repo.split('/').length !== 2 || repo.split('/').some(part => !part || part.includes(' '))) throw Error('GITHUB_REPO 설정 필요');
     if (!token) throw Error('GITHUB_TOKEN 설정 필요');
     const book = SpreadsheetApp.openById(FUKUOKA_CASH_SHEET_ID);
     const summary = book.getSheetByName('00_요약');
@@ -49,7 +49,7 @@ function syncPublicTrip() {
       const date = row[1] instanceof Date
         ? Utilities.formatDate(row[1],FUKUOKA_TZ,'yyyy-MM-dd')
         : String(row[1]||'').slice(0,10);
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) throw Error('날짜 확인: '+id);
+      if (date.length !== 10 || date[4] !== '-' || date[7] !== '-') throw Error('날짜 확인: '+id);
       records.push({id,date,time:String(row[2]||''),kind:'shared',
         category:String(row[3]||'기타'),merchant:String(row[4]||''),
         detail:String(row[5]||''),amount:Number(row[6])||0,
@@ -67,8 +67,8 @@ function syncPublicTrip() {
       throw Error('공금 장부 검증 실패');
     if (records.reduce((s,r)=>s+r.amount,0)!==pack.sharedSpent)
       throw Error('거래 합계 불일치');
-    putGitHub_(repo,token,'data/ledger.js','window.__TRIP_LEDGER__ = '+JSON.stringify(pack)+';\\n','공금 내역 자동 갱신');
-    putGitHub_(repo,token,'data/ledger.json',JSON.stringify(pack,null,2)+'\\n','공금 JSON 자동 갱신');
+    putGitHub_(repo,token,'data/ledger.js','window.__TRIP_LEDGER__ = '+JSON.stringify(pack)+';'+String.fromCharCode(10),'공금 내역 자동 갱신');
+    putGitHub_(repo,token,'data/ledger.json',JSON.stringify(pack,null,2)+String.fromCharCode(10),'공금 JSON 자동 갱신');
     Logger.log('공금 전용 동기화 완료: '+records.length+'행');
   } finally { lock.releaseLock(); }
 }
